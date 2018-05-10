@@ -1,0 +1,213 @@
+---
+title: "Exploring the BRFSS data"
+output: 
+  html_document: 
+    fig_height: 4
+    highlight: pygments
+    theme: spacelab
+---
+
+## Setup
+
+### Load packages
+
+```{r load-packages, message = FALSE}
+library(ggplot2)
+library(dplyr)
+library(scales)
+```
+
+### Load data
+
+```{r load-data}
+load("brfss2013.RData")
+```
+
+
+
+* * *
+
+## Part 1: Data
+
+Behavioral Risk Factor Surveillance System (BRFSS) is an ongoing surveillance system of health surveys that collect uniform, state-specific data about non-institutionalized adult population (18 years of age and older) residing in the US regarding their preventive health practices and risk behaviors that are linked to chronic diseases, injuries, and preventable infectious diseases that affect the adult population. Currently data are collected monthly in all 50 states, the District of Columbia, American Samoa, Palau, Puerto Rico, the U.S. Virgin Islands, and Guam. 
+
+Interviewers administer the annual BRFSS surveys continuously through the year. Interviews are conducted using Random Digit Dialing (RDD) techniques on both landlines and cell phones. In conducting landline telephone survey, interviewers collect data from a randomly selected adult in a household. In conducting the cellular telephone survey, interviewers collect data from an adult residing in a private residence or college housing, who have received 90 percent or more of their calls on cellular telephones. 
+
+Random sampling allows each case in the population to have an equal chance of being included and there is no implied connection between the cases in the sample. However, there are few possible limitations. First, study excludes persons without a phone who are more likely to have lower lower income and lower level of formal education then persons with a phone. Lower socioeconomic status might affect responses such as fruits and vegetables consumption, exercise and health care access. However, since an estimated 97.5% of US households had telephone service in 2012, not including persons without a phone should not alter the results significantly. Second, no conclusions can be drawn about the institutionalized persons since the data does not sample people from this group. Third, interviews are conducted in English or Spanish, which excludes people speaking other primary languages.
+
+Informations obtained from the sample are generalizable to the population of United States. No random assignment has been performed. This observational study provides evidence of a naturally occuring association between variables, but they cannot by themselves show a causal connection.
+
+
+
+* * *
+
+## Part 2: Research questions
+
+**Research question 1:**
+Is HIV testing rate among women of different age groups related to their marital status (comparing married and unmarried women in the relationship)?
+
+Rationale: Assessing relationship between marital status and HIV testing among women of different age groups would be a valuable to public health practice and AIDS prevention policies. Since many studies recognize that married women run an elevated risk for HIV (Rethinking Gender, Heterosexual Men, and Women's Vulnerability to HIV/AIDS, Jenny A. Higgins, Susie Hoffman, and Shari L. Dworkin, Am J Public Health. 2010 March; 100(3): 435-445.), further research, as well as HIV programming and policies, are required to target women coming from this group.
+
+**Research quesion 2:**
+What is the proportion of young adults reporting poor mental health in the last 30 days, distributed by employment status?
+
+Rationale: Examining whether psychological well-being would appear unequally distributed by employment status in the population of young adults (defined as people between 18 and 34 years of age) can help inform mental health practitioners in creating an integrated approach to primary and secondary prevention of mental disorders. Understanding consequences of changes in labour market status could provide important information to mental health advocates, researchers and labour policymakers.
+
+**Research quesion 3:**
+Is number of adult men in household related to high blood pressure among African-American women?
+
+Rationale: Exploring relationship between living in households with more than average number of adult men and hypertension among African-American women might provide valuable insights for future studies of risk factors in home settings and their associations with hypertension. Studies suggested that experiencing unfair treatment based on race and gender may constitute risk factor for high blood pressure among black women (Krieger, N. (1990). Racial and gender discrimination: Risk factors for high blood pressure? Social Science & Medicine, 30(12), 1273-1281). This question might be of interest for future studies assessing relationship between gender discrimination and living in the household with more adult men than average as potential stressor. 
+
+* * *
+
+## Part 3: Exploratory data analysis
+
+**Research quesion 1:**
+
+Variables to be explored: respondents' sex, marital status, ever tested HIV and imputed age in six groups.
+
+```{r}
+brfss2013 %>% 
+  select(sex, marital, hivtst6, X_age_g) %>% 
+  str()
+```
+
+Next step is comparing proportions of women who had been tested for HIV, based on their marital status. Married women have the lower HIV testing rate (only 27.81% of married women had been tested), compared to unmarried women in relationship, who have the highest HIV testing rate (54.34%).
+
+```{r}
+brfss2013 %>% 
+    filter(sex == "Female", marital != "NA", hivtst6 != "NA") %>%
+    group_by(marital, hivtst6) %>% 
+    summarise(count = n()) %>% 
+    mutate(percentage = round(count/sum(count)*100, digits=2)) %>% 
+    filter(hivtst6 == "Yes") %>%
+    select(marital, count, percentage)
+
+```
+
+Then, we will construct bar chart in order to visualize differences in HIV-testing rates between married and unmarried women in the relationship.
+
+```{r}
+ggplot(data = (brfss2013 %>%
+filter(marital != "NA", marital == c("Married", "A member of an unmarried couple"), hivtst6 != "NA") %>%
+group_by(hivtst6, marital)) , aes(x = marital, fill = hivtst6)) +
+geom_bar(position = "fill") +
+    labs(x = "Marital status", y = "Percentages") + 
+    labs(title = "HIV-testing rates among married women and unmarried women in a relationship", subtitle = "A subtitle") +     
+    labs(fill = "Tested for HIV") +  
+scale_y_continuous(labels = scales::percent)
+```
+
+HIV-testing rates across different age groups follow a similar distribution pattern for married and unmarried women in relationship. Married women have lower HIV testing rate in all age groups compared to unmarried women in the relationship.
+
+```{r}
+ggplot(data = (brfss2013 %>%
+    filter(sex == "Female", marital == "Married", hivtst6 != "NA") %>%
+    group_by(hivtst6, X_age_g)) , aes(x = X_age_g, fill = hivtst6)) +
+    geom_bar(position = "fill") +
+    labs(x = "Age groups", y = "Percentages") + 
+    labs(title = "HIV-testing rates among married women,\nby different age groups") +     
+    labs(fill = "Tested for HIV") +
+    scale_x_discrete(labels = wrap_format(12)) +
+    scale_y_continuous(labels = scales::percent)
+
+ggplot(data = (brfss2013 %>%
+    filter(sex == "Female", marital == "A member of an unmarried couple", hivtst6 != "NA") %>%
+    group_by(hivtst6, X_age_g)) , aes(x = X_age_g, fill = hivtst6)) +
+    geom_bar(position = "fill") +
+    labs(x = "Age groups", y = "Percentages") + 
+    labs(title = "HIV-testing rates among unmarried women in the relationship,\nby different age groups") +     
+    labs(fill = "Tested for HIV") +    
+    scale_x_discrete(labels = wrap_format(12)) +
+    scale_y_continuous(labels = scales::percent)
+```
+
+Conclusion: Based on these visualizations, we can say that married women have lower HIV-testing rates, compared to unmarried women in the relationship. Comparing HIV-testing rates of married women and unmarried women in the relationship, across different age groups, does not reveal relationship between age, HIV-testing rate and marital status of compared groups.
+
+**Research quesion 2:**
+
+Variables to be explored: imputed age in six groups, employment status and number of the days mental health not good.
+
+Since our population of interest are young adults (defined as people between 18 and 34 years of age), first we will use six-level imputed age category to create new variable called "youngadult", consisted of two age categories - "Age 18 to 24" and "Age 25 to 34". 
+
+```{r}
+brfss2013 <- brfss2013 %>% 
+    mutate(youngadult = ifelse(X_age_g == c("Age 18 to 24", "Age 25 to 34"), "true", "false"))
+```
+
+Next, we want to explore adults who are reporting poor mental health in the past 30 days. Therefore, we have to create new variable, named "poormenthlth", to determine whether each observation in the data represents a person who reported that their health was "not good" for 15 or more days in the past 30 days.
+
+```{r}
+brfss2013 <- brfss2013 %>% 
+    mutate(poormenthlth = ifelse(menthlth >= "15", "true", "false"))
+```
+
+Numerical summary of young adults reporting poor mental health in the past 30 days, distributed by employment status, shows that young adults who are unable to work are most likely to report poor mental health, followed by retired and unemployed young adults.
+
+```{r}
+brfss2013 %>%
+    filter(youngadult == "true", employ1 != "NA", poormenthlth != "NA") %>% 
+    group_by(employ1, poormenthlth) %>%
+    summarise(count = n()) %>%
+    mutate(percentage = round(count/sum(count)*100, digits=2)) %>%
+    filter(poormenthlth == "true") %>%
+    select(employ1, count, percentage)
+```
+
+Bar chart focusing on working/able to work young adults shows that most vulnerable groups regarding psychological well-being are students and unemployed young adults.
+
+```{r}
+
+ggplot(data = (brfss2013 %>%
+    filter(poormenthlth != "NA", employ1 == c("Employed for wages", "Self-employed", "Out of work for less than 1 year", "Out of work for 1 year or more", "A homemaker", "A student"))), aes(x = employ1, fill = poormenthlth)) +  
+    geom_bar(position = "fill") +
+    labs(x = "Employment status", y = "Percentages") + 
+    labs(title = "Employment status of working/able to work young adults and\nreported mental health in the past 30 days") +     
+    labs(fill = "Poor mental health") +
+    scale_x_discrete(labels = wrap_format(12)) + 
+    scale_y_continuous(labels = scales::percent)
+
+```
+
+Conclusion: Young adults who are unable to work reported worse mental health compared to all other groups, whereas students and unemployed adults (out of work for less or more then 1 year) reported poor mental health considerably more often than other young adults who are working or able to work.
+
+**Research quesion 3:**
+
+Variables to be explored: respondents' sex, preferred race category, number of adult men in household and ever told blood pressure high.
+
+Our population of interest are African-American women living in the household with more then average number of adult men. Average number of adult men living in one household is 2. Based on this data we can create new variable, called "men02", differentiating between households with 2 or less men and households with more then 2 men.
+
+```{r}
+brfss2013 %>%
+	filter(nummen != "NA") %>%
+	summarise(nummenmean = mean(as.numeric(nummen)), nummenmedian = median(as.numeric(nummen)), nummensd = sd(as.numeric(nummen)))
+
+brfss2013 <- brfss2013 %>% 
+    mutate(men02 = ifelse(nummen == c("0", "1", "2"), "2 or less", "More than 2"))
+```
+
+Statistical summary does not indicate relationship between number of adult men in household and high blood pressure in African-American women.
+
+```{r}
+brfss2013 %>%
+    filter(sex == "Female", X_prace1 == "Black or African American", men02 != "NA", X_rfhype5 != "NA") %>% 
+    group_by(men02, X_rfhype5) %>%
+    summarise(count = n()) %>%
+    mutate(percentage = round(count/sum(count)*100, digits=2))
+```
+
+Plotting above statistical summary into a chart shows overall picture.
+
+```{r}
+ggplot(data = (brfss2013 %>%
+    filter(sex == "Female", men02 != "NA", X_rfhype5 != "NA")), aes(x = men02, fill = X_rfhype5)) +  
+    geom_bar(position = "fill") +
+    labs(x = "Number of adult men in household", y = "Percentages") + 
+    labs(title = "Relationship between number of adult men in household\nand high blood pressure in African-American women") +     
+    labs(fill = "Having high blood pressure") + 
+    scale_y_continuous(labels = scales::percent)
+```
+
+Conclusion: 
+
+Based on this visualization, we can conclude that among African-American women there is no relation between having high blood pressure and living in the household with more than average number of adult men.
